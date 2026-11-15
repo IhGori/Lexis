@@ -101,7 +101,7 @@ $vars: (
                 "Hyperlink foreground color",
                 (
                     light: palette(blue, 7),
-                    dark: palette(blue, 2),
+                    dark: #4fd8d2,
                 ),
             ),
         ),
@@ -154,21 +154,21 @@ $vars: (
                 "Border color with medium contrast against window background",
                 (
                     light: palette(lightgray, 6),
-                    dark: palette(darkgray, 7),
+                    dark: #2a3446,
                 ),
             ),
             subtle: (
                 "Border color with low contrast against window background",
                 (
                     light: palette(lightgray, 4),
-                    dark: palette(darkgray, 6),
+                    dark: #222b3a,
                 ),
             ),
             strong: (
                 "Border color with high contrast against window background",
                 (
                     light: palette(lightgray, 9),
-                    dark: palette(darkgray, 9),
+                    dark: #3d495c,
                 ),
             ),
             focus: (
@@ -224,7 +224,7 @@ $vars: (
                     "Background color of primary button",
                     (
                         light: color.scale(palette(blue, 6), $lightness: 5%),
-                        dark: color.scale(palette(blue, 7), $saturation: -10%),
+                        dark: #19c9c2,
                     ),
                 ),
                 gradient: (
@@ -232,22 +232,29 @@ $vars: (
                         "Start value of primary button gradient",
                         (
                             light: palette(blue, 5),
-                            dark: color.scale(palette(blue, 6), $saturation: -10%),
+                            dark: #2ad8d1,
                         ),
                     ),
                     end: (
                         "End value of primary button gradient",
                         (
                             light: color.scale(palette(blue, 6), $lightness: 5%),
-                            dark: color.scale(palette(blue, 7), $saturation: -10%),
+                            dark: #12b9b3,
                         ),
+                    ),
+                ),
+                fg: (
+                    "Text color of primary button",
+                    (
+                        light: white,
+                        dark: #06222a,
                     ),
                 ),
                 disabled: (
                     "Background color of primary button in disabled state",
                     (
                         light: palette(blue, 3),
-                        dark: color.scale(palette(blue, 5), $saturation: -10%),
+                        dark: #0f7f7b,
                     ),
                 ),
             ),
@@ -302,7 +309,7 @@ $vars: (
             focus: (
                 "Box-shadow color for elements in focused state",
                 (
-                    default: palette(indigo, 5),
+                    default: #19c9c2,
                 ),
             ),
         ),

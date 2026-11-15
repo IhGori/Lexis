@@ -68,7 +68,7 @@
     @include background($primary, $hover: $with-hover);
 
     @if ($primary) {
-        color: white;
+        color: var(--button-primary-fg, white);
     } @else {
         color: var(--fg);
     }
@@ -82,7 +82,7 @@
             &.#{$active-class} {
                 @include impressed-shadow(0.35);
                 background: var(--button-primary-bg);
-                color: white;
+                color: var(--button-primary-fg, white);
                 border-color: var(--border);
             }
         }
