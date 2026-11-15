@@ -134,6 +134,6 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 <style lang="scss">
     .editor-toolbar {
         padding: 0 0 4px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--border-subtle);
     }
 </style>

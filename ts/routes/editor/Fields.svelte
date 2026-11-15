@@ -18,10 +18,10 @@ Contains the fields. This contains the scrollable area.
 
 <style lang="scss">
     .fields {
-        margin-top: 5px;
+        margin-top: 10px;
         display: grid;
         grid-auto-rows: min-content;
-        grid-gap: 6px;
+        grid-gap: 10px;
 
         /* Add space after the last field and the start of the tag editor */
         padding-bottom: 5px;

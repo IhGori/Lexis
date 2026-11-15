@@ -24,9 +24,11 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         display: flex;
         justify-content: space-between;
         background: var(--canvas);
-        border-top-right-radius: var(--border-radius);
-        border-top-left-radius: var(--border-radius);
-        padding: 0 3px 1px;
+        border-top-right-radius: calc(var(--border-radius-medium) * 1.3);
+        border-top-left-radius: calc(var(--border-radius-medium) * 1.3);
+        padding: 2px 4px 3px;
+        font-weight: 600;
+        color: var(--fg-subtle);
 
         position: sticky;
         top: 0;

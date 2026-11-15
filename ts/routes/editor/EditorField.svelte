@@ -138,7 +138,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
     /* Make sure labels are readable on custom Qt backgrounds */
     .field-container {
         background: var(--canvas);
-        border-radius: var(--border-radius);
+        border-radius: calc(var(--border-radius-medium) * 1.3);
         overflow: hidden;
     }
 
@@ -151,8 +151,9 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         /* make room for thicker focus border */
         margin: 1px;
 
-        border-radius: var(--border-radius);
+        border-radius: calc(var(--border-radius-medium) * 1.3);
         border: 1px solid var(--border);
+        background: var(--canvas-elevated);
 
         @include elevation(1);
 
@@ -162,7 +163,7 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
             outline: 2px solid var(--accent-danger);
         }
         &:focus-within {
-            outline: 2px solid var(--border-focus);
+            outline: 2px solid var(--button-primary-bg);
         }
     }
 </style>

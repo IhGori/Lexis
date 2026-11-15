@@ -509,13 +509,13 @@ License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
         align-items: flex-end;
         background: var(--canvas-elevated);
         border: 1px solid var(--border);
-        border-radius: var(--border-radius);
-        padding: 6px;
+        border-radius: calc(var(--border-radius-medium) * 1.3);
+        padding: 6px 8px;
         margin: 1px 3px 3px 1px;
 
         &:focus-within {
             outline-offset: -1px;
-            outline: 2px solid var(--border-focus);
+            outline: 2px solid var(--button-primary-bg);
         }
     }
 
