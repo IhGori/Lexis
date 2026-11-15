@@ -1,9 +1,44 @@
 # Copyright: Anki Software, LLC and contributors
 # License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+import re
+
 from anki.utils import is_mac, is_win
 from aqt import colors, props
+from aqt.qt import QColor
 from aqt.theme import ThemeManager
+
+
+def _theme_qcolor(tm: ThemeManager, color: dict[str, str]) -> QColor:
+    """Like `tm.qcolor()`, but also understands the `rgb(12.5%, 40%, 90%)` form
+    some theme colors are written in (it would give black)."""
+    value = tm.var(color).strip()
+    if m := re.fullmatch(r"rgba?\(([^)]*)\)", value):
+        parts = [p.strip() for p in re.split(r"[,/ ]+", m.group(1).strip()) if p]
+        channels = []
+        for part in parts[:3]:
+            if part.endswith("%"):
+                channels.append(round(float(part[:-1]) * 2.55))
+            else:
+                channels.append(round(float(part)))
+        return QColor(*channels)
+    parsed = QColor(value)
+    return parsed if parsed.isValid() else tm.qcolor(color)
+
+
+def blend(
+    tm: ThemeManager, top: dict[str, str], bottom: dict[str, str], ratio: float
+) -> str:
+    """The theme color `top` mixed over `bottom`, as an opaque hex color. Used
+    instead of translucent colors, which Qt views paint over a black backdrop."""
+    t, b = _theme_qcolor(tm, top), _theme_qcolor(tm, bottom)
+
+    def mix(x: int, y: int) -> int:
+        return round(x * ratio + y * (1 - ratio))
+
+    return "#{:02x}{:02x}{:02x}".format(
+        mix(t.red(), b.red()), mix(t.green(), b.green()), mix(t.blue(), b.blue())
+    )
 
 
 def button_gradient(start: str, end: str) -> str:
@@ -367,62 +402,37 @@ class CustomStyles:
     def table(self, tm: ThemeManager) -> str:
         return f"""
     QTableView {{
-        border-radius: {tm.var(props.BORDER_RADIUS)};
-        border-{tm.left()}: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        border-bottom: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
-        gridline-color: {tm.var(colors.BORDER_SUBTLE)};
-        selection-background-color: {tm.var(colors.SELECTED_BG)};
-        selection-color: {tm.var(colors.SELECTED_FG)};
-        background: {tm.var(colors.CANVAS_CODE)};
+        border-radius: {tm.var(props.BORDER_RADIUS_MEDIUM)};
+        border: 1px solid {tm.var(colors.BORDER_SUBTLE)};
+        gridline-color: transparent;
+        selection-background-color: {blend(tm, colors.BUTTON_PRIMARY_BG, colors.CANVAS_ELEVATED, 0.35)};
+        selection-color: {tm.var(colors.FG)};
+        background: {tm.var(colors.CANVAS_ELEVATED)};
+        outline: 0;
+    }}
+    QTableView::item {{
+        padding: 0px 6px;
+        border: none;
     }}
     QHeaderView {{
-        background: {tm.var(colors.CANVAS)};
+        background: {tm.var(colors.CANVAS_ELEVATED)};
+        border: none;
     }}
     QHeaderView::section {{
-        padding-{tm.left()}: 0px;
+        padding-{tm.left()}: 6px;
         padding-{tm.right()}: 15px;
-        border: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        background: {tm.var(colors.BUTTON_BG)};
+        padding-top: 5px;
+        padding-bottom: 5px;
+        border: none;
+        border-bottom: 1px solid {tm.var(colors.BORDER_SUBTLE)};
+        background: {tm.var(colors.CANVAS_ELEVATED)};
+        color: {tm.var(colors.FG_SUBTLE)};
+        font-weight: bold;
     }}
-    QHeaderView::section:first {{
-        margin-left: -1px;
-    }}
-    QHeaderView::section:pressed,
-    QHeaderView::section:pressed:!first {{
-        background: {
-            button_pressed_gradient(
-                tm.var(colors.BUTTON_GRADIENT_START),
-                tm.var(colors.BUTTON_GRADIENT_END),
-                tm.var(colors.SHADOW),
-            )
-        }
-    }}
-    QHeaderView::section:hover {{
-        background: {
-            button_gradient(
-                tm.var(colors.BUTTON_GRADIENT_START),
-                tm.var(colors.BUTTON_GRADIENT_END),
-            )
-        };
-    }}
-    QHeaderView::section:first {{
-        border-left: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        border-top-left-radius: {tm.var(props.BORDER_RADIUS)};
-    }}
-    QHeaderView::section:!first {{
-        border-left: none;
-    }}
-    QHeaderView::section:last {{
-        border-right: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        border-top-right-radius: {tm.var(props.BORDER_RADIUS)};
-    }}
-    QHeaderView::section:only-one {{
-        border-left: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        border-right: 1px solid {tm.var(colors.BORDER_SUBTLE)};
-        border-top-left-radius: {tm.var(props.BORDER_RADIUS)};
-        border-top-right-radius: {tm.var(props.BORDER_RADIUS)};
+    QHeaderView::section:hover,
+    QHeaderView::section:pressed {{
+        background: {tm.var(colors.BORDER_SUBTLE)};
+        color: {tm.var(colors.FG)};
     }}
     QHeaderView::up-arrow,
     QHeaderView::down-arrow {{

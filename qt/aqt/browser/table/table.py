@@ -13,11 +13,12 @@ from anki.cards import Card, CardId
 from anki.collection import Collection, Config, OpChanges
 from anki.consts import *
 from anki.notes import Note, NoteId
-from aqt import gui_hooks
+from aqt import colors, gui_hooks
 from aqt.browser.table import Columns, ItemId, SearchContext
 from aqt.browser.table.model import DataModel
 from aqt.browser.table.state import CardState, ItemState, NoteState
 from aqt.qt import *
+from aqt.stylesheets import blend
 from aqt.theme import theme_manager
 from aqt.utils import (
     KeyboardModifiersPressed,
@@ -339,6 +340,8 @@ class Table:
     def _setup_view(self) -> None:
         assert self._view is not None
         self._view.setSortingEnabled(True)
+        # rows are separated by their alternating background, not by grid lines
+        self._view.setShowGrid(False)
         self._view.setModel(self._model)
         # On every paint, QHeaderView checks if each column is fully selected
         # by calling flags() for every row, which signficantly slows down selections,
@@ -372,7 +375,7 @@ class Table:
         assert self._view is not None
         vh = self._view.verticalHeader()
         assert vh is not None
-        vh.setDefaultSectionSize(curmax + 6)
+        vh.setDefaultSectionSize(curmax + 12)
 
     def _setup_headers(self) -> None:
         assert self._view is not None
@@ -682,4 +685,25 @@ class StatusDelegate(QItemDelegate):
             painter.save()
             painter.fillRect(option.rect, brush)
             painter.restore()
+        if option.state & QStyle.StateFlag.State_Selected:
+            # paint the selection ourselves: the default one turns grey whenever
+            # the window is not focused, and ignores the theme's accent
+            assert painter
+            painter.save()
+            painter.fillRect(
+                option.rect,
+                QColor(
+                    blend(
+                        theme_manager,
+                        colors.BUTTON_PRIMARY_BG,
+                        colors.CANVAS_ELEVATED,
+                        0.35,
+                    )
+                ),
+            )
+            painter.restore()
+            option.state &= ~QStyle.StateFlag.State_Selected
+            option.palette.setColor(
+                QPalette.ColorRole.Text, theme_manager.qcolor(colors.FG)
+            )
         return QItemDelegate.paint(self, painter, option, index)

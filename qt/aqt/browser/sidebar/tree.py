@@ -46,6 +46,7 @@ from aqt.operations.tag import (
 )
 from aqt.qt import *
 from aqt.qt import sip
+from aqt.stylesheets import blend
 from aqt.theme import ColoredIcon, theme_manager
 from aqt.utils import (
     KeyboardModifiersPressed,
@@ -115,7 +116,22 @@ class SidebarTreeView(QTreeView):
             f"background: {bgcolor}",
         ]
 
-        self.setStyleSheet("QTreeView { %s }" % ";".join(styles))
+        item_selected = blend(
+            theme_manager, colors.BUTTON_PRIMARY_BG, colors.CANVAS, 0.3
+        )
+        item_hover = theme_manager.var(colors.BORDER_SUBTLE)
+        self.setStyleSheet(
+            "QTreeView { %s }"
+            "QTreeView::item { padding: 3px 0px; border-radius: 6px; }"
+            "QTreeView::item:hover { background: %s; }"
+            "QTreeView::item:selected { background: %s; color: %s; }"
+            % (
+                ";".join(styles),
+                item_hover,
+                item_selected,
+                theme_manager.var(colors.FG),
+            )
+        )
 
     def cleanup(self) -> None:
         self.toolbar.cleanup()
