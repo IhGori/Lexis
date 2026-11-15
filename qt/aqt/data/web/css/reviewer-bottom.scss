@@ -82,3 +82,122 @@ button {
         border-top-color: color(border-subtle);
     }
 }
+
+/* Answer buttons: one tinted button per answer, with the next interval below.
+ * "Good" is the filled one, like the main action everywhere else. */
+.ease,
+#ansbut {
+    --ac-rgb: 128 128 128;
+    --ac: rgb(var(--ac-rgb));
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    min-width: 5.6rem;
+    margin: 0.5rem 0.25rem 0.6rem;
+    padding: 0.5rem 0.9rem 0.45rem;
+    border: 1.5px solid rgb(var(--ac-rgb) / 0.55);
+    border-radius: 12px;
+    background: rgb(var(--ac-rgb) / 0.1);
+    color: var(--ac);
+    box-shadow: none;
+    cursor: pointer;
+    transition:
+        background 0.12s ease,
+        border-color 0.12s ease,
+        transform 0.08s ease;
+
+    &:hover {
+        background: rgb(var(--ac-rgb) / 0.2);
+        border-color: var(--ac);
+    }
+    &:active {
+        transform: translateY(1px);
+    }
+    &:focus-visible {
+        outline: 2px solid var(--ac);
+        outline-offset: 2px;
+    }
+
+    .ans-label {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .ans-due {
+        position: static;
+        transform: none;
+        min-height: 1.1em;
+        font-size: 0.75rem;
+        font-weight: 400;
+        color: var(--fg-subtle);
+    }
+}
+
+.ease.again {
+    --ac-rgb: 216 57 63;
+}
+.ease.hard {
+    --ac-rgb: 184 116 26;
+}
+.ease.easy {
+    --ac-rgb: 47 125 225;
+}
+.nightMode {
+    .ease.again {
+        --ac-rgb: 239 91 97;
+    }
+    .ease.hard {
+        --ac-rgb: 232 161 58;
+    }
+    .ease.easy {
+        --ac-rgb: 90 162 245;
+    }
+}
+
+/* filled: the answer you are expected to give, and "show answer" */
+.ease.good,
+#ansbut {
+    background: var(--button-primary-bg);
+    border-color: var(--button-primary-bg);
+    color: var(--button-primary-fg, white);
+
+    &:hover {
+        background: var(--button-primary-bg);
+        filter: brightness(1.08);
+    }
+    .ans-due {
+        color: inherit;
+        opacity: 0.85;
+
+        span {
+            color: inherit;
+        }
+    }
+}
+
+#ansbut {
+    min-width: 15rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0.55rem;
+
+    .ans-label {
+        font-size: 1.1rem;
+    }
+}
+
+/* Edit / More: quiet text buttons, so the answers stand out */
+.stat button {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--fg-subtle);
+
+    &:hover {
+        background: var(--border-subtle);
+        color: var(--fg);
+    }
+}
+
+#outer {
+    border-top-color: var(--border-subtle);
+}

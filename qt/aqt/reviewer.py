@@ -336,6 +336,7 @@ class Reviewer:
 <div id="_mark" hidden>&#x2605;</div>
 <div id="_flag" hidden>&#x2691;</div>
 {fade}
+<div id="session-progress"><i id="session-progress-fill"></i></div>
 <div id="qa" dir="auto"></div>
 {extra}
 """
@@ -399,6 +400,7 @@ class Reviewer:
         )
         self._update_flag_icon()
         self._update_mark_icon()
+        self._update_session_progress()
         self._showAnswerButton()
         self.mw.web.setFocus()
         # user hook
@@ -451,6 +453,22 @@ class Reviewer:
 
     def _update_mark_icon(self) -> None:
         self.web.eval(f"_drawMark({json.dumps(self.card.note().has_tag(MARKED_TAG))});")
+
+    def _update_session_progress(self) -> None:
+        "Fill the bar at the top with the share of today's cards already answered."
+        _idx, counts = self._v3.counts()
+        remaining = sum(counts)
+        done = max(self._reps - 1, 0)
+        total = done + remaining
+        percent = round(100 * done / total) if total else 0
+        self.web.eval(
+            "(function(){"
+            "var f=document.getElementById('session-progress-fill');"
+            "if(!f)return;"
+            f"f.style.width='{percent}%';"
+            f"f.parentNode.title='{done} / {total}';"
+            "})();"
+        )
 
     _drawMark = _update_mark_icon
     _drawFlag = _update_flag_icon
@@ -847,7 +865,7 @@ timerStopped = false;
 
     def _showAnswerButton(self) -> None:
         middle = """
-<button title="{}" id="ansbut" onclick='pycmd("ans");'>{}<span class=stattxt>{}</span></button>""".format(
+<button title="{}" id="ansbut" onclick='pycmd("ans");'><span class=ans-label>{}</span><span class=ans-due>{}</span></button>""".format(
             tr.actions_shortcut_key(val=tr.studying_space()),
             tr.studying_show_answer(),
             self._remaining(),
@@ -922,7 +940,15 @@ timerStopped = false;
         assert isinstance(self.mw.col.sched, V3Scheduler)
         labels = self.mw.col.sched.describe_next_states(self._v3.states)
 
-        def but(i: int, label: str) -> str:
+        buttons = self._answerButtonList()
+        roles = {
+            2: ("again", "good"),
+            3: ("again", "good", "easy"),
+            4: ("again", "hard", "good", "easy"),
+        }.get(len(buttons), ())
+
+        def but(pos: int, i: int, label: str) -> str:
+            role = roles[pos] if pos < len(roles) else "good"
             if i == default:
                 extra = """id="defease" """
             else:
@@ -934,9 +960,10 @@ timerStopped = false;
                 else ""
             )
             return """
-<td align=center><button %s title="%s" data-ease="%s" onclick='pycmd("ease%d");'>\
-%s%s</button></td>""" % (
+<td align=center><button %s class="ease %s" title="%s" data-ease="%s" onclick='pycmd("ease%d");'>\
+<span class=ans-label>%s</span>%s</button></td>""" % (
                 extra,
+                role,
                 key,
                 i,
                 i,
@@ -945,15 +972,15 @@ timerStopped = false;
             )
 
         buf = "<center><table cellpadding=0 cellspacing=0><tr>"
-        for ease, label in self._answerButtonList():
-            buf += but(ease, label)
+        for pos, (ease, label) in enumerate(buttons):
+            buf += but(pos, ease, label)
         buf += "</tr></table>"
         return buf
 
     def _buttonTime(self, i: int, v3_labels: Sequence[str]) -> str:
         if self.mw.col.conf["estTimes"]:
             txt = v3_labels[i - 1]
-            return f"""<span class="nobold">{txt}</span>"""
+            return f"""<span class="ans-due">{txt}</span>"""
         else:
             return ""
 

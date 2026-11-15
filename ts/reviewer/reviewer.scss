@@ -13,7 +13,6 @@ hr {
 }
 
 body {
-    margin: 20px;
     overflow-wrap: break-word;
     // default background setting to fit with toolbar
     background-size: cover;
@@ -27,6 +26,62 @@ body {
 body.nightMode {
     background-color: var(--canvas);
     color: var(--fg);
+}
+
+// The card sits on a panel in the middle of the window. The page color comes
+// from the theme; the note type's own `.card` styling no longer decides it.
+html body.card,
+body.nightMode {
+    background-color: var(--canvas);
+    background-image: none;
+}
+
+body {
+    margin: 0;
+    padding: 2.2rem 1.2rem 1.6rem;
+    box-sizing: border-box;
+    min-height: 100vh;
+    // card in the middle of the window, a little above the exact center
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-bottom: 4rem;
+}
+
+#qa {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 46rem;
+    margin: 0 auto;
+    font-size: 1.25em;
+    padding: 2.4rem 2.6rem;
+    background: var(--canvas-elevated);
+    color: var(--fg);
+    border: 1px solid var(--border-subtle);
+    border-radius: 18px;
+    box-shadow: 0 10px 30px -18px rgb(0 0 0 / 0.35);
+    line-height: 1.55;
+    transition: opacity 0.12s ease;
+}
+
+// session progress: thin bar at the very top
+#session-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    z-index: 5;
+    background: var(--border-subtle);
+
+    i {
+        display: block;
+        height: 100%;
+        width: 0;
+        border-radius: 0 4px 4px 0;
+        background: var(--button-primary-bg);
+        transition: width 0.3s ease;
+    }
 }
 
 img {
