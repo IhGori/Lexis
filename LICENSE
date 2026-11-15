@@ -13,6 +13,8 @@ In the qt folder:
  * Anki's translations are a mix of BSD and public domain.
  * mpv.py: MIT.
  * winpaths.py: MIT.
+ * qt/aqt/data/web/imgs/flags: flag-icons, MIT.
+ * qt/aqt/data/web/imgs/icons: Material Design Icons, Apache 2.
  * MathJax: Apache 2.
  * jQuery and jQuery-UI: MIT.
  * plot.js: MIT.

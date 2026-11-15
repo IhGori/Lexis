@@ -167,6 +167,22 @@ fn build_imgs(build: &mut Build) -> Result<()> {
             inputs: inputs![glob!["qt/aqt/data/web/imgs/*"]],
             output_folder: "qt/_aqt/data/web/imgs",
         },
+    )?;
+    // country flags (square SVGs) used as language badges
+    build.add_action(
+        "qt:aqt:data:web:imgs:flags",
+        CopyFiles {
+            inputs: inputs![glob!["qt/aqt/data/web/imgs/flags/*"]],
+            output_folder: "qt/_aqt/data/web/imgs/flags",
+        },
+    )?;
+    // side menu icons
+    build.add_action(
+        "qt:aqt:data:web:imgs:icons",
+        CopyFiles {
+            inputs: inputs![glob!["qt/aqt/data/web/imgs/icons/*"]],
+            output_folder: "qt/_aqt/data/web/imgs/icons",
+        },
     )
 }
 
