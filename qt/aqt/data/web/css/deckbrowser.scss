@@ -4,9 +4,13 @@
 @use "../../../../../ts/lib/sass/vars" as *;
 @use "../../../../../ts/lib/sass/card-counts";
 @use "../../../../../ts/lib/sass/elevation" as *;
+@use "../../../../../ts/lib/sass/button-mixins" as button;
 
 table {
     padding: 1rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 62rem;
 
     .fancy & {
         border: 1px solid var(--border-subtle);
@@ -154,4 +158,397 @@ tr:hover:not(.top-level-drag-row) {
 
 #studiedToday {
     margin: 2em 0;
+}
+
+/* Top-level deck cards (one per language / main deck) */
+.deck-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+    gap: 0.9rem;
+    max-width: 62rem;
+    margin: 0 auto 1.6rem auto;
+}
+
+.deck-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.95rem 1.05rem;
+    background: var(--canvas-elevated);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--border-radius-medium) * 1.5);
+    cursor: pointer;
+    transition:
+        transform 0.12s ease,
+        border-color 0.12s ease,
+        box-shadow 0.12s ease;
+
+    &:hover,
+    &:focus-visible {
+        transform: translateY(-2px);
+        border-color: var(--button-primary-bg);
+        outline: none;
+        @include elevation(2);
+
+        .gears {
+            visibility: visible;
+            opacity: 0.8;
+        }
+    }
+
+    &.current {
+        border-color: var(--button-primary-bg);
+        box-shadow: 0 0 0 1px var(--button-primary-bg);
+    }
+
+    &.filtered .deck-card-name {
+        color: var(--fg-link);
+    }
+}
+
+/* decks with a language flag light up in the colors of that country */
+.deck-card.has-flag {
+    overflow: hidden;
+    /* the Python side provides one accent per theme (see language_flags.py) */
+    --flag-accent: var(--flag-accent-light);
+    .night-mode & {
+        --flag-accent: var(--flag-accent-dark);
+    }
+
+    /* stripes of the flag along the top edge */
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--flag-stripes);
+        opacity: 0;
+        transition: opacity 0.12s ease;
+    }
+
+    &:hover,
+    &:focus-visible {
+        border-color: var(--flag-accent);
+        box-shadow:
+            0 0 0 1px var(--flag-accent),
+            0 10px 26px -12px var(--flag-accent);
+
+        &::before {
+            opacity: 1;
+        }
+    }
+}
+
+.deck-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    /* same height with or without a flag, so cards line up */
+    min-height: 1.8rem;
+}
+
+.deck-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.deck-card-flag {
+    flex: none;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.deck-card-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.deck-card-opts {
+    display: flex;
+    border-radius: 50%;
+    padding: 0.2rem;
+
+    &:hover {
+        background: var(--border-subtle);
+    }
+
+    .gears {
+        padding-top: 0;
+        visibility: hidden;
+    }
+}
+
+.deck-card-total {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+
+    &.zero {
+        color: var(--fg-faint);
+    }
+}
+
+.deck-card-label {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--fg-subtle);
+    margin-inline-start: 0.2rem;
+}
+
+.deck-card-bar {
+    display: flex;
+    height: 5px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--border-subtle);
+
+    i {
+        display: block;
+        height: 100%;
+    }
+    .new {
+        background: var(--state-new);
+    }
+    .learn {
+        background: var(--state-learn);
+    }
+    .review {
+        background: var(--state-review);
+    }
+}
+
+.deck-card-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.7rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+
+    span {
+        white-space: nowrap;
+    }
+}
+
+/* Home panels: study button, retention, 7-day forecast */
+.home-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.9rem;
+    max-width: 62rem;
+    margin: 0 auto 1.6rem auto;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.95rem 1.05rem;
+    background: var(--canvas-elevated);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--border-radius-medium) * 1.5);
+}
+
+.panel-start {
+    justify-content: center;
+    align-items: stretch;
+    text-align: center;
+}
+
+.start-btn {
+    @include button.base($primary: true);
+    padding: 0.7rem 1rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-radius: var(--border-radius-medium);
+}
+
+.start-deck {
+    font-size: 0.8rem;
+    color: var(--fg-subtle);
+}
+
+.panel-title {
+    font-size: 0.85rem;
+    color: var(--fg-subtle);
+}
+
+.panel-big {
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+
+    small {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: var(--fg-subtle);
+    }
+}
+
+.fc-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    height: 5.5rem;
+}
+
+.fc-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    gap: 2px;
+}
+
+.fc-bar {
+    width: 100%;
+    min-height: 0;
+    border-radius: 3px 3px 0 0;
+    background: var(--button-primary-bg);
+}
+
+.fc-value {
+    font-size: 0.7rem;
+    color: var(--fg-subtle);
+    font-variant-numeric: tabular-nums;
+}
+
+.fc-day {
+    font-size: 0.7rem;
+    color: var(--fg-faint);
+    margin-top: 2px;
+}
+
+/* Search box with live results */
+.home-search {
+    position: relative;
+    max-width: 62rem;
+    margin: 0 auto 1.1rem auto;
+
+    input {
+        box-sizing: border-box;
+        width: 100%;
+        padding: 0.65rem 0.9rem 0.65rem 2.5rem;
+        font-size: 0.95rem;
+        color: var(--fg);
+        background: var(--canvas-elevated);
+        border: 1px solid var(--border);
+        border-radius: calc(var(--border-radius-medium) * 1.5);
+        outline: none;
+
+        &:focus {
+            border-color: var(--button-primary-bg);
+            box-shadow: 0 0 0 1px var(--button-primary-bg);
+        }
+        &::placeholder {
+            color: var(--fg-subtle);
+        }
+        &::-webkit-search-cancel-button {
+            display: none;
+        }
+    }
+
+    /* magnifier, drawn as a mask so it follows the theme */
+    &::before {
+        content: "";
+        position: absolute;
+        left: 0.8rem;
+        top: 0.72rem;
+        width: 1.2rem;
+        height: 1.2rem;
+        background-color: var(--fg-subtle);
+        -webkit-mask: url(/_anki/imgs/icons/magnify.svg) center / contain no-repeat;
+        mask: url(/_anki/imgs/icons/magnify.svg) center / contain no-repeat;
+        pointer-events: none;
+    }
+}
+
+#home-search-results {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    right: 0;
+    overflow: hidden;
+    background: var(--canvas-elevated);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--border-radius-medium) * 1.5);
+    @include elevation(3);
+
+    &.hidden {
+        display: none;
+    }
+}
+
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.9rem;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--border-subtle);
+    }
+}
+
+.search-flag {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+.search-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-front,
+.search-back {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-front {
+    font-weight: 600;
+}
+
+.search-back {
+    font-size: 0.82rem;
+    color: var(--fg-subtle);
+}
+
+.search-deck {
+    flex: none;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+}
+
+.search-footer {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.75rem;
+    color: var(--fg-subtle);
+    border-top: 1px solid var(--border-subtle);
 }

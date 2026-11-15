@@ -4,16 +4,23 @@
 from __future__ import annotations
 
 import html
+import json
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import aqt
 import aqt.operations
-from anki.collection import Collection, OpChanges
+from anki.collection import Collection, OpChanges, SearchNode
 from anki.decks import DeckCollapseScope, DeckId, DeckTreeNode
+from anki.utils import strip_html
 from aqt import AnkiQt, gui_hooks
 from aqt.deckoptions import display_options_for_deck_id
+from aqt.language_flags import (
+    flag_accent_for_theme,
+    flag_for_deck_name,
+    flag_stripes,
+)
 from aqt.operations import QueryOp
 from aqt.operations.deck import (
     add_deck_dialog,
@@ -42,6 +49,10 @@ class RenderData:
     current_deck_id: DeckId
     studied_today: str
     sched_upgrade_required: bool
+    # reviews due on each of the next 7 days (overdue cards count as today)
+    forecast: list[int] = field(default_factory=lambda: [0] * 7)
+    # percentage of correct answers on review cards in the last 30 days
+    retention: float | None = None
 
 
 @dataclass
@@ -52,10 +63,16 @@ class DeckBrowserContent:
     Attributes:
         tree {str} -- HTML of the deck tree section
         stats {str} -- HTML of the stats section
+        cards {str} -- HTML of the top-level deck cards section
+        panels {str} -- HTML of the study button / retention / forecast panels
+        search {str} -- HTML of the search box
     """
 
     tree: str
     stats: str
+    cards: str = ""
+    panels: str = ""
+    search: str = ""
 
 
 @dataclass
@@ -130,6 +147,12 @@ class DeckBrowser:
                 openLink("https://docs.ankiweb.net/faqs/the-anki-2.1-scheduler")
             else:
                 openLink("https://docs.ankiweb.net/faqs/the-2021-scheduler")
+        elif cmd == "search":
+            self._on_search(arg)
+        elif cmd == "search_all":
+            aqt.dialogs.open("Browser", self.mw, search=(arg,))
+        elif cmd == "search_note":
+            aqt.dialogs.open("Browser", self.mw, search=(SearchNode(nid=int(arg)),))
         elif cmd == "select":
             set_current_deck(
                 parent=self.mw, deck_id=DeckId(int(arg))
@@ -145,6 +168,9 @@ class DeckBrowser:
     ##########################################################################
 
     _body = """
+%(search)s
+%(cards)s
+%(panels)s
 <center>
 <table cellspacing=0 cellpadding=3>
 %(tree)s
@@ -159,11 +185,14 @@ class DeckBrowser:
         if not reuse:
 
             def get_data(col: Collection) -> RenderData:
+                forecast, retention = self._home_stats(col)
                 return RenderData(
                     tree=col.sched.deck_due_tree(),
                     current_deck_id=col.decks.get_current_id(),
                     studied_today=col.studied_today(),
                     sched_upgrade_required=not col.v3_scheduler(),
+                    forecast=forecast,
+                    retention=retention,
                 )
 
             def success(output: RenderData) -> None:
@@ -183,6 +212,9 @@ class DeckBrowser:
         content = DeckBrowserContent(
             tree=self._renderDeckTree(data.tree),
             stats=self._renderStats(),
+            cards=self._render_deck_cards(data.tree),
+            panels=self._render_home_panels(data),
+            search=self._render_search_box(),
         )
         gui_hooks.deck_browser_will_render_content(self, content)
         self.web.stdHtml(
@@ -208,6 +240,209 @@ class DeckBrowser:
         return '<div id="studiedToday"><span>{}</span></div>'.format(
             self._render_data.studied_today
         )
+
+    # Search box
+    ##########################################################################
+
+    def _render_search_box(self) -> str:
+        label = html.escape(tr.actions_search())
+        notes = html.escape(tr.browsing_notes())
+        return f"""
+<div class="home-search" data-notes-label="{notes}">
+  <input id="home-search-input" type="search" autocomplete="off" spellcheck="false"
+         placeholder="{label}" aria-label="{label}">
+  <div id="home-search-results" class="hidden"></div>
+</div>"""
+
+    @staticmethod
+    def _search_rows(
+        col: Collection, query: str, limit: int = 8
+    ) -> tuple[int, list[dict[str, Any]]]:
+        """Notes matching a normal Anki search, shaped for the home search box."""
+
+        def plain(text: str) -> str:
+            return strip_html(text).strip()[:140]
+
+        nids = col.find_notes(query)
+        rows: list[dict[str, Any]] = []
+        for nid in nids[:limit]:
+            note = col.get_note(nid)
+            cards = note.cards()
+            deck = col.decks.name(cards[0].did) if cards else ""
+            rows.append(
+                {
+                    "nid": int(nid),
+                    "front": plain(note.fields[0]),
+                    "back": plain(note.fields[1]) if len(note.fields) > 1 else "",
+                    "deck": deck,
+                    "flag": flag_for_deck_name(deck.split("::")[0]),
+                }
+            )
+        return len(nids), rows
+
+    @staticmethod
+    def _worth_searching(query: str) -> bool:
+        """Two characters, or one in a script written without spaces (kanji, hanzi,
+        hangul...), where a single character is already a word."""
+        return len(query) >= 2 or (len(query) == 1 and ord(query) > 0x2E7F)
+
+    def _on_search(self, arg: str) -> None:
+        """arg is "<sequence number>:<query>"; the answer is pushed to the page."""
+        seq_text, _, query = arg.partition(":")
+        query = query.strip()
+        try:
+            seq = int(seq_text)
+        except ValueError:
+            return
+
+        def send(total: int, rows: list[dict[str, Any]]) -> None:
+            payload = json.dumps({"seq": seq, "total": total, "rows": rows})
+            self.web.eval(f"deckSearchResults({payload})")
+
+        if not self._worth_searching(query):
+            send(0, [])
+            return
+        # an invalid search (for example an unclosed quote) just shows no results
+        QueryOp(
+            parent=self.mw,
+            op=lambda col: self._search_rows(col, query),
+            success=lambda result: send(*result),
+        ).failure(lambda _err: send(0, [])).run_in_background()
+
+    @staticmethod
+    def _home_stats(col: Collection) -> tuple[list[int], float | None]:
+        """Cheap read-only numbers for the home panels."""
+        assert col.db is not None
+        today = col.sched.today
+        forecast = [0] * 7
+        # review (2) and day-learning (3) cards; overdue ones count as today
+        for day, count in col.db.all(
+            "select max(due - ?, 0), count() from cards "
+            "where queue in (2, 3) and due <= ? group by 1",
+            today,
+            today + 6,
+        ):
+            forecast[min(int(day), 6)] += count
+        since_ms = (col.sched.day_cutoff - 30 * 86400) * 1000
+        row = col.db.first(
+            "select sum(ease > 1), count() from revlog where type = 1 and id > ?",
+            since_ms,
+        )
+        correct, total = row if row else (0, 0)
+        retention = round(100 * (correct or 0) / total, 1) if total else None
+        return forecast, retention
+
+    def _render_home_panels(self, data: RenderData) -> str:
+        """Study button, retention and the 7-day forecast."""
+
+        # prefer the current deck if it has cards due, else the first that does
+        def due(node: DeckTreeNode) -> int:
+            return node.new_count + node.learn_count + node.review_count
+
+        candidates = [n for n in data.tree.children if due(n) > 0]
+        target = next(
+            (n for n in candidates if n.deck_id == data.current_deck_id),
+            candidates[0] if candidates else None,
+        )
+        if target is not None:
+            start = (
+                f'<button class="start-btn" '
+                f"onclick=\"return pycmd('open:{target.deck_id}')\">"
+                f"{html.escape(tr.studying_study_now())}</button>"
+                f'<div class="start-deck">{html.escape(target.name)}</div>'
+            )
+        else:
+            start = ""
+
+        peak = max(data.forecast) or 1
+        bars = "".join(
+            f'<div class="fc-col" title="{count}">'
+            f'<span class="fc-value">{count}</span>'
+            f'<div class="fc-bar" style="height: {max(100 * count / peak, 3 if count else 0):.0f}%"></div>'
+            f'<span class="fc-day" data-day-offset="{i}"></span></div>'
+            for i, count in enumerate(data.forecast)
+        )
+        retention = (
+            f"{data.retention:g}<small>%</small>" if data.retention is not None else "—"
+        )
+        return f"""
+<div class="home-panels">
+  <div class="panel panel-start">{start}</div>
+  <div class="panel">
+    <div class="panel-title">{html.escape(tr.statistics_true_retention_title())}</div>
+    <div class="panel-big">{retention}</div>
+  </div>
+  <div class="panel panel-forecast">
+    <div class="panel-title">{html.escape(tr.statistics_future_due_title())}</div>
+    <div class="fc-bars">{bars}</div>
+  </div>
+</div>"""
+
+    def _render_deck_cards(self, top: DeckTreeNode) -> str:
+        """One card per top-level deck, with due counts and a proportion bar."""
+        if not top.children:
+            return ""
+        current_id = self._render_data.current_deck_id
+        cards = []
+        for node in top.children:
+            new, learn, review = node.new_count, node.learn_count, node.review_count
+            total = new + learn + review
+
+            def width(count: int, total: int = total) -> float:
+                return round(100 * count / total, 1) if total else 0
+
+            flag_code = flag_for_deck_name(node.name)
+            flag = (
+                f'<img class="deck-card-flag" alt="" '
+                f'src="/_anki/imgs/flags/{flag_code}.svg">'
+                if flag_code
+                else ""
+            )
+            klass = "deck-card"
+            style = ""
+            if flag_code:
+                # the hover effect uses the colors of the flag
+                klass += " has-flag"
+                # one accent per theme, so it stays visible on dark and light cards
+                style = (
+                    f' style="--flag-accent-dark: '
+                    f"{flag_accent_for_theme(flag_code, dark=True)}; "
+                    f"--flag-accent-light: "
+                    f"{flag_accent_for_theme(flag_code, dark=False)}; "
+                    f'--flag-stripes: {flag_stripes(flag_code)}"'
+                )
+            if node.deck_id == current_id:
+                klass += " current"
+            if node.filtered:
+                klass += " filtered"
+            cards.append(
+                f"""
+<div class="{klass}" role="button" tabindex="0"{style}
+     onclick="return pycmd('open:{node.deck_id}')"
+     onkeydown="if (event.key === 'Enter') return pycmd('open:{node.deck_id}')">
+  <div class="deck-card-head">
+    <span class="deck-card-title">{flag}<span class="deck-card-name">{html.escape(node.name)}</span></span>
+    <a class="deck-card-opts" title="{html.escape(tr.actions_options())}"
+       onclick="event.stopPropagation(); return pycmd('opts:{node.deck_id}')">
+      <img src="/_anki/imgs/gears.svg" class="gears">
+    </a>
+  </div>
+  <div class="deck-card-total{" zero" if not total else ""}">{total}
+    <span class="deck-card-label">{html.escape(tr.decks_review_header())}</span>
+  </div>
+  <div class="deck-card-bar">
+    <i class="new" style="width: {width(new)}%"></i>
+    <i class="learn" style="width: {width(learn)}%"></i>
+    <i class="review" style="width: {width(review)}%"></i>
+  </div>
+  <div class="deck-card-counts">
+    <span class="{"new-count" if new else "zero-count"}">{html.escape(tr.actions_new())} {new}</span>
+    <span class="{"learn-count" if learn else "zero-count"}">{html.escape(tr.decks_learn_header())} {learn}</span>
+    <span class="{"review-count" if review else "zero-count"}">{html.escape(tr.decks_review_header())} {review}</span>
+  </div>
+</div>"""
+            )
+        return '<div class="deck-cards">' + "".join(cards) + "</div>"
 
     def _renderDeckTree(self, top: DeckTreeNode) -> str:
         buf = """
