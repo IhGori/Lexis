@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import enum
-import re
 from collections.abc import Callable
 from typing import Any, cast
 
@@ -15,6 +14,9 @@ from aqt.sync import get_sync_status
 from aqt.theme import theme_manager
 from aqt.utils import tr
 from aqt.webview import AnkiWebView, AnkiWebViewKind
+
+# width in pixels of the side menu (the "top" toolbar is now a left side rail)
+SIDEBAR_WIDTH = 96
 
 
 class HideMode(enum.IntEnum):
@@ -63,7 +65,7 @@ class ToolbarWebView(AnkiWebView):
 class TopWebView(ToolbarWebView):
     def __init__(self, mw: aqt.AnkiQt) -> None:
         super().__init__(mw, kind=AnkiWebViewKind.TOP_TOOLBAR)
-        self.web_height = 0
+        self.setFixedWidth(SIDEBAR_WIDTH)
         qconnect(self.hide_timer.timeout, self.hide_if_allowed)
 
     def on_theme_did_change(self) -> None:
@@ -98,11 +100,6 @@ class TopWebView(ToolbarWebView):
         self.adjustHeightToFit()
         self.show()
 
-    def _onHeight(self, qvar: int | None) -> None:
-        super()._onHeight(qvar)
-        if qvar:
-            self.web_height = int(qvar)
-
     def hide_if_allowed(self) -> None:
         if self.mw.state != "review":
             return
@@ -130,11 +127,13 @@ class TopWebView(ToolbarWebView):
         self.eval(
             """document.body.classList.add("hidden"); """,
         )
+        self.setFixedWidth(0)
 
     def show(self) -> None:
         super().show()
 
         self.eval("""document.body.classList.remove("hidden"); """)
+        self.setFixedWidth(SIDEBAR_WIDTH)
 
     def flatten(self) -> None:
         self.eval("""document.body.classList.add("flat"); """)
@@ -148,51 +147,19 @@ class TopWebView(ToolbarWebView):
         )
 
     def update_background_image(self) -> None:
-        if self.mw.pm.minimalist_mode():
-            return
-
-        def set_background(computed: str) -> None:
-            # remove offset from copy
-            background = re.sub(r"-\d+px ", "0%", computed)
-            # ensure alignment with main webview
-            background = re.sub(r"\sfixed", "", background)
-            # change computedStyle px value back to 100vw
-            background = re.sub(r"\d+px", "100vw", background)
-
-            self.eval(
-                f"""
-                    document.body.style.setProperty("background", '{background}');
-                """
-            )
-            self.set_body_height(self.mw.web.height())
-
-            # offset reviewer background by toolbar height
-            if self.web_height:
-                self.mw.web.eval(
-                    f"""document.body.style.setProperty("background-position-y", "-{self.web_height}px"); """
-                )
-
-        self.mw.web.evalWithCallback(
-            """window.getComputedStyle(document.body).background; """,
-            set_background,
-        )
+        # The bar used to sit above the reviewer and copy its background so the
+        # two looked like one surface. As a side menu it has its own surface.
+        return
 
     def set_body_height(self, height: int) -> None:
-        self.eval(
-            f"""document.body.style.setProperty("min-height", "{self.mw.web.height()}px"); """
-        )
+        return
 
     def adjustHeightToFit(self) -> None:
-        self.eval("""document.body.style.setProperty("min-height", "0px"); """)
-        self.evalWithCallback("document.documentElement.offsetHeight", self._onHeight)
+        # Name kept for compatibility: this bar is a fixed-width side rail now.
+        self.setFixedWidth(0 if self.hidden else SIDEBAR_WIDTH)
 
     def resizeEvent(self, event: QResizeEvent | None) -> None:
         super().resizeEvent(event)
-
-        self.mw.web.evalWithCallback(
-            """window.innerHeight; """,
-            self.set_body_height,
-        )
 
 
 class BottomWebView(ToolbarWebView):
@@ -300,7 +267,7 @@ class Toolbar:
         )
         self.web.stdHtml(
             body,
-            css=["css/toolbar.css"],
+            css=["css/sidebar.css"],
             js=["js/vendor/jquery.min.js", "js/toolbar.js"],
             context=web_context,
         )
@@ -321,6 +288,7 @@ class Toolbar:
         func: Callable,
         tip: str | None = None,
         id: str | None = None,
+        icon: str | None = None,
     ) -> str:
         """Generates HTML link element and registers link handler
 
@@ -334,6 +302,8 @@ class Toolbar:
                                    over the link (default: {None})
             id: {Optional[str]} -- Optional id attribute to supply the link with
                                    (default: {None})
+            icon: {Optional[str]} -- Optional icon name from imgs/icons, shown
+                                   above the label in the side menu
 
         Returns:
             str -- HTML link element
@@ -344,10 +314,18 @@ class Toolbar:
         title_attr = f'title="{tip}"' if tip else ""
         id_attr = f'id="{id}"' if id else ""
 
+        if icon:
+            content = (
+                f'<span class="hicon" style="--icon: url(/_anki/imgs/icons/{icon}.svg)">'
+                f'</span><span class="hlabel">{label}</span>'
+            )
+        else:
+            content = label
+
         return (
             f"""<a class=hitem tabindex="-1" aria-label="{label}" """
             f"""{title_attr} {id_attr} href=# onclick="return pycmd('{cmd}')">"""
-            f"""{label}</a>"""
+            f"""{content}</a>"""
         )
 
     def _centerLinks(self) -> str:
@@ -358,6 +336,7 @@ class Toolbar:
                 self._deckLinkHandler,
                 tip=tr.actions_shortcut_key(val="D"),
                 id="decks",
+                icon="home-outline",
             ),
             self.create_link(
                 "add",
@@ -365,6 +344,7 @@ class Toolbar:
                 self._addLinkHandler,
                 tip=tr.actions_shortcut_key(val="A"),
                 id="add",
+                icon="plus-circle-outline",
             ),
             self.create_link(
                 "browse",
@@ -372,6 +352,7 @@ class Toolbar:
                 self._browseLinkHandler,
                 tip=tr.actions_shortcut_key(val="B"),
                 id="browse",
+                icon="card-search-outline",
             ),
             self.create_link(
                 "stats",
@@ -379,10 +360,24 @@ class Toolbar:
                 self._statsLinkHandler,
                 tip=tr.actions_shortcut_key(val="T"),
                 id="stats",
+                icon="chart-line",
             ),
         ]
 
+        # the main window is always "home" (decks, overview, review)
+        links[0] = links[0].replace("class=hitem", "class='hitem active'", 1)
+
         links.append(self._create_sync_link())
+        links.append(
+            self.create_link(
+                "prefs",
+                tr.preferences_preferences(),
+                self.mw.onPrefs,
+                tip=tr.actions_shortcut_key(val="Ctrl+P"),
+                id="prefs",
+                icon="cog-outline",
+            )
+        )
 
         gui_hooks.top_toolbar_did_init_links(links, self)
 
@@ -415,7 +410,7 @@ class Toolbar:
 
         return f"""
 <a class=hitem tabindex="-1" aria-label="{name}" title="{title}" id="{label}" href=# onclick="return pycmd('{label}')"
->{name}<img id=sync-spinner src='/_anki/imgs/refresh.svg'>
+><span class="hicon" style="--icon: url(/_anki/imgs/icons/sync.svg)"></span><span class="hlabel">{name}</span><img id=sync-spinner src='/_anki/imgs/refresh.svg'>
 </a>"""
 
     def set_sync_active(self, active: bool) -> None:

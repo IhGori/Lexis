@@ -1,0 +1,168 @@
+/* Copyright: Anki Software, LLC and contributors
+ * License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html */
+
+/* Side menu (the main window's left rail). The bottom bar keeps using
+ * toolbar.css, so nothing here may leak into it. */
+
+@use "../../../../../ts/lib/sass/root-vars";
+@use "../../../../../ts/lib/sass/vars" as *;
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    -webkit-user-select: none;
+    background: var(--canvas-elevated);
+
+    &.hidden {
+        opacity: 0;
+    }
+}
+
+* {
+    -webkit-user-drag: none;
+}
+
+/* keep the structure add-ons and toolbar.ts expect: left-tray / toolbar /
+ * right-tray, now stacked top to bottom */
+.header {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 0.7rem 0.45rem;
+    border-right: 1px solid var(--border-subtle);
+}
+
+.left-tray,
+.right-tray {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.toolbar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.4rem;
+    min-height: 0;
+}
+
+.hitem {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.6rem 0.2rem 0.5rem;
+    border-radius: var(--border-radius-medium);
+    color: var(--fg-subtle);
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.15;
+    text-align: center;
+    text-decoration: none;
+    transition:
+        background 0.12s ease,
+        color 0.12s ease;
+
+    &:hover {
+        background: var(--border-subtle);
+        color: var(--fg);
+    }
+
+    &:active {
+        background: var(--canvas-inset);
+    }
+
+    &:focus {
+        outline: 0;
+    }
+
+    &.active {
+        color: var(--button-primary-bg);
+
+        /* marker on the outer edge, like in the mockup */
+        &::before {
+            content: "";
+            position: absolute;
+            left: -0.45rem;
+            top: 18%;
+            bottom: 18%;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: var(--button-primary-bg);
+        }
+    }
+}
+
+/* icons are masks, so they take the text color of the theme */
+.hicon {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+}
+
+.hlabel {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+/* sync and preferences go to the bottom of the rail */
+#sync {
+    margin-top: auto;
+}
+
+@keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
+}
+
+#sync-spinner {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.9rem;
+    height: 0.9rem;
+    width: 0;
+    visibility: hidden;
+    filter: var(--sync-spinner-filter, none);
+}
+
+.nightMode #sync-spinner {
+    filter: invert(1);
+}
+
+.spin {
+    width: 0.9rem !important;
+    visibility: visible !important;
+    animation: spin 2s linear infinite;
+}
+
+.normal-sync {
+    color: color(state-new) !important;
+}
+
+.full-sync {
+    color: color(state-learn) !important;
+}
+
+.tray-item {
+    display: flex;
+    justify-content: center;
+}

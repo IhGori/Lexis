@@ -968,13 +968,17 @@ title="{}" {}>{}</button>""".format(
         sweb = self.bottomWeb = BottomWebView(self)
         sweb.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
         sweb.disable_zoom()
-        # add in a layout
-        self.mainLayout = QVBoxLayout()
+        # add in a layout: side menu on the left, main area + bottom bar on the right
+        self.mainLayout = QHBoxLayout()
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.mainLayout.setSpacing(0)
+        content = QVBoxLayout()
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(0)
+        content.addWidget(self.web)
+        content.addWidget(sweb)
         self.mainLayout.addWidget(tweb)
-        self.mainLayout.addWidget(self.web)
-        self.mainLayout.addWidget(sweb)
+        self.mainLayout.addLayout(content, 1)
         self.form.centralwidget.setLayout(self.mainLayout)
 
         # force webengine processes to load before cwd is changed
