@@ -14,6 +14,11 @@ from anki.scheduler import UnburyDeck
 from aqt import gui_hooks
 from aqt.deckdescription import DeckDescriptionDialog
 from aqt.deckoptions import display_options_for_deck
+from aqt.language_flags import (
+    flag_accent_for_theme,
+    flag_for_deck_name,
+    flag_stripes,
+)
 from aqt.operations import QueryOp
 from aqt.operations.scheduling import (
     empty_filtered_deck,
@@ -198,11 +203,44 @@ class Overview:
         )
         gui_hooks.overview_will_render_content(self, content)
         content.deck = html.escape(content.deck)
+        fields = dict(content.__dict__)
+        fields.update(self._header(deck["name"]))
         self.web.stdHtml(
-            self._body % content.__dict__,
+            self._body % fields,
             css=["css/overview.css"],
             js=["js/vendor/jquery.min.js"],
             context=self,
+        )
+
+    @staticmethod
+    def _header(full_name: str) -> dict[str, str]:
+        """Flag, parent path and name of the deck, plus the flag colors."""
+        parts = full_name.split("::")
+        flag_code = flag_for_deck_name(parts[0])
+        flag = ""
+        klass = "ov"
+        style = ""
+        if flag_code:
+            flag = (
+                f'<img class="ov-flag" alt="" src="/_anki/imgs/flags/{flag_code}.svg">'
+            )
+            klass += " has-flag"
+            style = (
+                f' style="--flag-accent-dark: '
+                f"{flag_accent_for_theme(flag_code, dark=True)}; "
+                f"--flag-accent-light: "
+                f"{flag_accent_for_theme(flag_code, dark=False)}; "
+                f'--flag-stripes: {flag_stripes(flag_code)}"'
+            )
+        path = ""
+        if len(parts) > 1:
+            path = f'<div class="ov-path">{html.escape(" › ".join(parts[:-1]))}</div>'
+        return dict(
+            klass=klass,
+            style=style,
+            flag=flag,
+            path=path,
+            name=html.escape(parts[-1]),
         )
 
     def _show_finished_screen(self) -> None:
@@ -240,38 +278,51 @@ class Overview:
             buried_new = buried_learning = buried_review = 0
         buried_label = tr.studying_counts_differ()
 
-        def number_row(title: str, klass: str, count: int, buried_count: int) -> str:
+        def tile(title: str, klass: str, count: int, buried_count: int) -> str:
             buried = f"{buried_count:+}" if buried_count else ""
             return f"""
-<tr>
-    <td>{title}:</td>
-    <td>
-        <b>
-            <span class={klass}>{count}</span>
-            <span class=bury-count title="{buried_label}">{buried}</span>
-        </b>
-    </td>
-</tr>
-"""
+<div class="ov-tile">
+    <div class="ov-num">
+        <span class={klass}>{count}</span>
+        <span class=bury-count title="{buried_label}">{buried}</span>
+    </div>
+    <div class="ov-label">{title}</div>
+</div>"""
+
+        total = sum(counts[:3])
+
+        def width(count: int) -> float:
+            return round(100 * count / total, 1) if total else 0
 
         return f"""
-<table width=400 cellpadding=5>
-<tr><td align=center valign=top>
-<table cellspacing=5>
-{number_row(tr.actions_new(), "new-count", counts[0], buried_new)}
-{number_row(tr.scheduling_learning(), "learn-count", counts[1], buried_learning)}
-{number_row(tr.studying_to_review(), "review-count", counts[2], buried_review)}
-</table>
-</td><td align=center>
-{but("study", tr.studying_study_now(), id="study", extra=" autofocus")}</td></tr></table>"""
+<div class="ov-total"><b>{total}</b>
+<span class="ov-total-label">{html.escape(tr.browsing_cards().lower())}</span></div>
+<div class="ov-bar">
+    <i class="new" style="width:{width(counts[0])}%"></i>
+    <i class="learn" style="width:{width(counts[1])}%"></i>
+    <i class="review" style="width:{width(counts[2])}%"></i>
+</div>
+<div class="ov-tiles">
+{tile(tr.actions_new(), "new-count", counts[0], buried_new)}
+{tile(tr.scheduling_learning(), "learn-count", counts[1], buried_learning)}
+{tile(tr.studying_to_review(), "review-count", counts[2], buried_review)}
+</div>
+<div class="ov-study">
+{but("study", tr.studying_study_now(), id="study", extra=" autofocus")}
+</div>"""
 
     _body = """
-<center>
-<h3>%(deck)s</h3>
+<div class="%(klass)s"%(style)s>
+    <div class="ov-head">
+        %(flag)s
+        <div class="ov-title">%(path)s<h1 class="ov-name">%(name)s</h1></div>
+    </div>
+    %(table)s
+</div>
+<div class="ov-extra">
 %(shareLink)s
 %(desc)s
-%(table)s
-</center>
+</div>
 """
 
     def edit_description(self) -> None:

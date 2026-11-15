@@ -10,3 +10,27 @@ body {
     margin-top: 0;
     padding: 9px;
 }
+
+/* Quiet pill buttons for the bottom bar's actions (options, custom study,
+ * create deck...). The review screen restyles its own buttons on top of this. */
+#header button {
+    margin: 0.55rem 0.2rem;
+    padding: 0.4rem 0.95rem;
+    font-size: 0.85rem;
+    color: var(--fg-subtle);
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+    transition:
+        color 0.12s ease,
+        border-color 0.12s ease,
+        background 0.12s ease;
+
+    &:hover {
+        color: var(--fg);
+        background: var(--border-subtle);
+        border-color: var(--border);
+    }
+}
